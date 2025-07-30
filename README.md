@@ -19,8 +19,7 @@ This project uses:
 ✅ User login & session management  
 ✅ Sign a document: creates a PDF containing the document text, its digital signature, and the signer’s certificate  
 ✅ Verify a signed PDF: checks the digital signature against the embedded certificate  
-✅ Stores user-specific private keys and certificates in a `certs/` folder  
-✅ Simple web interface
+
 
 ---
 
