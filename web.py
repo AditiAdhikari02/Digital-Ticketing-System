@@ -1,20 +1,22 @@
 from flask import Flask, render_template, request, redirect, session, send_file, url_for
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
-from cryptography.hazmat.primitives import hashes, serialization
 from werkzeug.security import generate_password_hash, check_password_hash
 from cryptography.exceptions import InvalidSignature
 from PyPDF2 import PdfReader
-from cryptography import x509
 from cryptography.x509.oid import NameOID
 from datetime import datetime, timedelta
 from flask_sqlalchemy import SQLAlchemy
-import os
-import pytz
 import qrcode
 from io import BytesIO
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
+from cryptography import x509
+from flask import Flask, request, send_file
+from cryptography.hazmat.primitives import serialization, hashes
+from cryptography.hazmat.primitives.asymmetric import padding
+
 import base64
+import os
 
 # ---------------------------------------
 # Flask app setup
@@ -335,27 +337,32 @@ def purchase_ticket(event_name):
 
     return render_template('purchase_ticket.html', event=event)
 
+
 @app.route('/sign_document', methods=['GET', 'POST'])
 def sign_document():
     if 'user' not in session:
         return redirect('/login')
 
+    username = session['user']
+    key_path = os.path.join(CERT_DIR, f"{username}_key.pem")
+    cert_path = os.path.join(CERT_DIR, f"{username}_cert.pem")
+
+    if not os.path.exists(key_path) or not os.path.exists(cert_path):
+        return "❌ Key or certificate not found."
+
     if request.method == 'POST':
         document_text = request.form.get('document_text')
-        username = session['user']
+        if not document_text:
+            return render_template("sign_document.html", message="Please provide document text.")
 
-        key_path = os.path.join(CERT_DIR, f"{username}_key.pem")
-        cert_path = os.path.join(CERT_DIR, f"{username}_cert.pem")
-
-        if not os.path.exists(key_path) or not os.path.exists(cert_path):
-            return "❌ Key or certificate not found."
-
+        # Load private key and certificate
         with open(key_path, "rb") as f:
             private_key = serialization.load_pem_private_key(f.read(), password=None)
 
-        with open(cert_path, "rb") as f:
-            cert = f.read().decode()
+        with open(cert_path, "r") as f:
+            cert_pem = f.read()
 
+        # Sign only the document_text
         signature = private_key.sign(
             document_text.encode(),
             padding.PKCS1v15(),
@@ -363,29 +370,53 @@ def sign_document():
         )
         signature_b64 = base64.b64encode(signature).decode()
 
-        # Create signed PDF
+        # Create the PDF
         pdf_stream = BytesIO()
         c = canvas.Canvas(pdf_stream, pagesize=letter)
 
         y = 750
-        c.drawString(100, y, "Document Content:")
-        y -= 20
+        line_height = 15
+
+        c.setFont("Helvetica-Bold", 12)
+        c.drawString(100, y, f"Signed Document by {username}")
+        y -= line_height * 2
+
+        c.setFont("Helvetica", 10)
+
+        # Mark start of document text
+        c.drawString(100, y, "---DOCUMENT TEXT---")
+        y -= line_height
+
+        # Write document text
         for line in document_text.splitlines():
             c.drawString(100, y, line)
-            y -= 15
+            y -= line_height
 
-        y -= 20
+        # Mark end
+        y -= line_height
+        c.drawString(100, y, "---END DOCUMENT TEXT---")
+        y -= line_height
+
+        # Signature block
+        y -= line_height
         c.drawString(100, y, "---SIGNATURE---")
-        y -= 15
+        y -= line_height
+
         for i in range(0, len(signature_b64), 80):
             c.drawString(100, y, signature_b64[i:i+80])
-            y -= 15
+            y -= line_height
 
-        y -= 15
+        # Certificate block
+        y -= line_height
         c.drawString(100, y, "---CERTIFICATE---")
-        for line in cert.splitlines():
-            y -= 15
-            c.drawString(100, y, line)
+        y -= line_height
+
+        for line in cert_pem.strip().splitlines():
+            c.drawString(100, y, line.strip())
+            y -= line_height
+            if y < 50:
+                c.showPage()
+                y = 750
 
         c.save()
         pdf_stream.seek(0)
@@ -398,6 +429,9 @@ def sign_document():
         )
 
     return render_template("sign_document.html")
+
+
+
 
 @app.route('/download_ticket/<username>')
 def download_ticket(username):
@@ -483,7 +517,6 @@ def verify_ticket():
         uploaded_file = request.files.get('ticket_file')
         if uploaded_file and uploaded_file.filename.endswith('.pdf'):
             try:
-                # Read and extract text from PDF
                 reader = PdfReader(uploaded_file)
                 text = ''
                 for page in reader.pages:
@@ -492,32 +525,34 @@ def verify_ticket():
                         text += extracted + '\n'
 
                 lines = text.splitlines()
-                # Find ticket text lines (before ---SIGNATURE---)
-                if "---SIGNATURE---" not in lines or "---CERTIFICATE---" not in lines:
-                    result = "❌ Verification failed: Missing signature or certificate sections."
-                    return render_template('verify_ticket.html', result=result)
 
+                # Find indices
+                doc_start = lines.index("---DOCUMENT TEXT---") + 1
+                doc_end = lines.index("---END DOCUMENT TEXT---")
                 sign_index = lines.index("---SIGNATURE---")
                 cert_index = lines.index("---CERTIFICATE---")
 
-                ticket_text_lines = lines[:sign_index]
+                if doc_start >= doc_end or sign_index <= doc_end or cert_index <= sign_index:
+                    result = "❌ Verification failed: Missing or invalid markers."
+                    return render_template('verify_ticket.html', result=result)
+
+                # Extract parts
+                document_text_lines = lines[doc_start:doc_end]
                 signature_lines = lines[sign_index+1:cert_index]
                 certificate_lines = lines[cert_index+1:]
 
-                # Rebuild original ticket text and signature
-                ticket_text = '\n'.join(ticket_text_lines).strip()
+                document_text = '\n'.join(document_text_lines).strip()
                 signature_b64 = ''.join(signature_lines).strip()
                 certificate_pem = '\n'.join(certificate_lines).strip()
 
-                # Load certificate & public key
+                # Load cert and verify
                 cert = x509.load_pem_x509_certificate(certificate_pem.encode())
                 public_key = cert.public_key()
-
-                # Decode signature and verify
                 signature = base64.b64decode(signature_b64)
+
                 public_key.verify(
                     signature,
-                    ticket_text.encode(),
+                    document_text.encode(),
                     padding.PKCS1v15(),
                     hashes.SHA256()
                 )
