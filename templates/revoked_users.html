@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Revoked Certificates{% endblock %}
+{% block content %}
+<div class="container my-4">
+  <h2 class="mb-4">Revoked Certificates</h2>
+
+  {% if revoked %}
+    <ul class="list-group">
+      {% for user in revoked %}
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+          <span>{{ user }}</span>
+          <a href="{{ url_for('unrevoke', username=user) }}" class="btn btn-sm btn-warning">
+            🔓 Unrevoke
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>No revoked certificates at the moment.</p>
+  {% endif %}
+
+  <a href="{{ url_for('dashboard') }}" class="btn btn-link mt-4">← Back to Dashboard</a>
+</div>
+{% endblock %}

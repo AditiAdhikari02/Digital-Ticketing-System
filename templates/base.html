@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{% block title %}Digital Ticket System{% endblock %}</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+
+  <!-- ✅ NAVBAR: Put this right after <body> -->
+  <nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <a class="navbar-brand" href="/">Ticket System</a>
+    <div class="collapse navbar-collapse">
+      <ul class="navbar-nav mr-auto">
+        {% if session.get('user') %}
+          <li class="nav-item"><a class="nav-link" href="/dashboard">Dashboard</a></li>
+          <li class="nav-item"><a class="nav-link" href="/verify_ticket">Verify Ticket</a></li>
+          <li class="nav-item"><a class="nav-link" href="/logout">Logout</a></li>
+        {% else %}
+          <li class="nav-item"><a class="nav-link" href="/login">Login</a></li>
+          <li class="nav-item"><a class="nav-link" href="/register">Register</a></li>
+        {% endif %}
+      </ul>
+    </div>
+  </nav>
+
+  <div class="container mt-4">
+    <!-- ✅ MESSAGE ALERT: Place this at the top of the main container so it shows in all pages -->
+    {% if message %}
+    <div class="alert alert-warning">{{ message }}</div>
+    {% endif %}
+
+    <!-- ✅ MAIN CONTENT: Child templates replace this -->
+    {% block content %}
+    {% endblock %}
+  </div>
+
+  <!-- ✅ FOOTER: Place this outside the container so it stays at the bottom -->
+  <footer class="text-center mt-4">
+    <p>&copy; {{ datetime.utcnow().year }} Digital Ticketing System</p>
+  </footer>
+
+</body>
+</html>

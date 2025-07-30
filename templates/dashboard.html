@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mx-auto p-4">
+  <h2 class="text-2xl font-bold mb-4">Welcome, {{ username }}!</h2>
+
+  <h3 class="text-xl font-semibold mb-2">Available Events:</h3>
+  {% if events %}
+  <ul class="list-disc pl-5 mb-4">
+    {% for event in events %}
+    <li>
+      <span>{{ event.name }} - {{ event.date }}</span>
+      <a href="/sign_document" class="btn btn-secondary mt-3">Sign Document</a>
+      <a href="{{ url_for('purchase_ticket', event_name=event.name) }}" class="text-blue-500 hover:underline">Purchase Ticket</a>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p>No events available at the moment.</p>
+  {% endif %}
+
+  <!-- Purchased Tickets section -->
+  <h3 class="text-xl font-semibold mt-6 mb-2">Your Purchased Tickets</h3>
+  {% if tickets %}
+  <ul class="list-disc pl-5">
+    {% for ticket in tickets %}
+    <li>
+      Event: {{ ticket.event.name }} |
+      Status:
+      {% if ticket_statuses[ticket.id] == "Valid" %}
+        <span style="color: green; font-weight: bold;">{{ ticket_statuses[ticket.id] }}</span>
+      {% elif ticket_statuses[ticket.id] == "Revoked" %}
+        <span style="color: red; font-weight: bold;">{{ ticket_statuses[ticket.id] }}</span>
+      {% elif ticket_statuses[ticket.id] == "Expired" %}
+        <span style="color: orange; font-weight: bold;">{{ ticket_statuses[ticket.id] }}</span>
+      {% else %}
+        <span>{{ ticket_statuses[ticket.id] }}</span>
+      {% endif %}
+      |
+      <a href="{{ url_for('download_ticket', username=username, event=ticket.event.name) }}" class="text-blue-500 hover:underline">Download Ticket</a>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p>You have no tickets yet.</p>
+  {% endif %}
+
+  <!-- Add the sign/verify links here -->
+  <div class="mt-6">
+    <a href="/sign_document" class="btn btn-primary mr-3">✍️ Sign Document</a>
+    <a href="/verify_ticket" class="btn btn-primary">🔍 Verify Signed PDF</a>
+  </div>
+
+</div>
+{% endblock %}

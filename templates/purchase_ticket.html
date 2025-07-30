@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+  <h2>Purchase Ticket for {{ event.name }}</h2>
+  <p>Date: {{ event.date }}</p>
+
+  {% if message %}
+  <div class="alert alert-warning">{{ message }}</div>
+  {% else %}
+  <form method="POST">
+    <button type="submit" class="btn btn-primary">Confirm Purchase</button>
+  </form>
+  {% endif %}
+
+  <a href="{{ url_for('dashboard') }}">Back to Dashboard</a>
+{% endblock %}

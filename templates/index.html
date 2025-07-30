@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Welcome{% endblock %}
+{% block content %}
+<div class="text-center">
+  <h1>Welcome to Digital Ticketing</h1>
+  <p class="lead">Securely buy and verify your digital event tickets.</p>
+  {% if not session.get('user') %}
+    <a href="{{ url_for('register') }}" class="btn btn-primary me-2">Register</a>
+    <a href="{{ url_for('login') }}" class="btn btn-outline-primary">Login</a>
+  {% else %}
+    <a href="{{ url_for('dashboard') }}" class="btn btn-primary">Go to Dashboard</a>
+  {% endif %}
+</div>
+{% endblock %}

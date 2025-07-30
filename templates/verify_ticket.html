@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Verify Ticket{% endblock %}
+{% block content %}
+<h2>Verify Digital Ticket</h2>
+<form method="POST" enctype="multipart/form-data" class="mt-4">
+  <div class="mb-3">
+    <label for="ticket_file" class="form-label">Signed Ticket File</label>
+    <input type="file" name="ticket_file" id="ticket_file" class="form-control" required>
+  </div>
+  <button type="submit" class="btn btn-primary">Verify Ticket</button>
+</form>
+
+{% if result %}
+  <div class="alert alert-info mt-4">{{ result }}</div>
+{% endif %}
+
+<a href="{{ url_for('dashboard') }}" class="btn btn-link mt-3">← Back to Dashboard</a>
+{% endblock %}

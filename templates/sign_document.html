@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Sign Document{% endblock %}
+
+{% block content %}
+<h2>Sign a Document</h2>
+<form method="POST">
+  <div class="mb-3">
+    <label for="document_text" class="form-label">Document Text</label>
+    <textarea name="document_text" id="document_text" class="form-control" rows="6" required></textarea>
+  </div>
+  <button type="submit" class="btn btn-primary">Sign Document</button>
+</form>
+{% endblock %}
